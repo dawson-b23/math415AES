@@ -33,7 +33,7 @@
 ##
 from Crypto import Random
 from Crypto.Cipher import AES
-from Crypto.Random import get_random_bytes
+#from Crypto.Random import get_random_bytes
 import os
 import os.path
 
@@ -43,37 +43,43 @@ class AES_Encryptor:
     def __init__(self, key):
         self.key = key
 
+    # this function serves as a pad, which is needed in the AES encyrption process
     def pad(self, s):
-        return s + b"\0" * (AES.block_size - len(s) % AES.block_size)
+        return s + b"\0" * (AES.block_size - len(s) % AES.block_size) # padding the ciphertext with 0 bits
 
+    # encryption function used in encrypt_file 
     def encrypt(self, message, key, key_size=256):
-        message = self.pad(message)
-        iv = Random.new().read(AES.block_size)
+        message = self.pad(message) # padding the message before encryption
+        iv = Random.new().read(AES.block_size) # shift vector 
         cipher = AES.new(key, AES.MODE_CBC, iv)
         return iv + cipher.encrypt(message)
 
+    # makes use of encrypt function to encrypt a file 
     def encrypt_file(self, file_name):
-        with open(file_name, 'rb') as fo:
-            plaintext = fo.read()
+        with open(file_name, 'rb') as file_in:
+            plaintext = file_in.read()
         enc = self.encrypt(plaintext, self.key)
-        with open(file_name + ".enc", 'wb') as fo:
-            fo.write(enc)
+        with open(file_name + ".enc", 'wb') as file_in:
+            file_in.write(enc)
         os.remove(file_name)
 
+    # decryption function used in decrypt_file 
     def decrypt(self, ciphertext, key):
         iv = ciphertext[:AES.block_size]
         cipher = AES.new(key, AES.MODE_CBC, iv)
         plaintext = cipher.decrypt(ciphertext[AES.block_size:])
         return plaintext.rstrip(b"\0")
 
+    # makes use of decrypt function to decrypt a file 
     def decrypt_file(self, file_name):
-        with open(file_name, 'rb') as fo:
-            ciphertext = fo.read()
+        with open(file_name, 'rb') as file_in:
+            ciphertext = file_in.read()
         dec = self.decrypt(ciphertext, self.key)
-        with open(file_name[:-4], 'wb') as fo:
-            fo.write(dec)
+        with open(file_name[:-4], 'wb') as file_in:
+            file_in.write(dec)
         os.remove(file_name)
 
+# this function generates a 256 bit key for the user, and places it where they specify 
 def generate_key(key_location):
     # generating a key
     key = get_random_bytes(32) # this will be for 256 bit, 1 byte = 8 bit, 8 * 32 = 256 bit
@@ -83,7 +89,7 @@ def generate_key(key_location):
     file_out.write(key)
     file_out.close()
 
-
+# selects key from a file or location specified by the user
 def select_key(key_location):
     file_in = open(key_location, 'rb') # rb = read bytes
     key = file_in.read() # read key from file
@@ -96,8 +102,6 @@ def main():
 
     while True:
         key_selection = int(input("1. Enter '1' to generate a 256 bit key.\n2. Enter '2' to select a key from a file or thumbdrive.\n3. Enter '3' to exit\n")) 
-    	#key = b'[EX\xc8\xd5\xbfI{\xa2$\x05(\xd5\x18\xbf\xc0\x85)\x10nc\x94\x02)j\xdf\xcb\xc4\x94\x9d(\x9e'
-    	#enc = AES_Encryptor(key)
         if key_selection == 1:
             storage_location = (str(input("Enter name of where you would like to store the generated key: ")))
             generate_key(storage_location)
@@ -113,9 +117,13 @@ def main():
         user_input = int(input(
             "1. Enter '1' to encrypt file.\n2. Enter '2' to decrypt file.\n3. Enter '3' to exit.\n"))
         if user_input == 1:
-            enc.encrypt_file(str(input("Enter name of file to encrypt: ")))
+            file_name = str(input("Enter name of file to encrypt: "))
+            enc.encrypt_file(file_name)
+            print(file_name + " has been successfully encrypted.\n")
         elif user_input == 2:
-            enc.decrypt_file(str(input("Enter name of file to decrypt: ")))
+            file_name = str(input("Enter name of file to decrypt: "))
+            enc.decrypt_file(file_name)
+            print(file_name + " has been successfully decrypted.\n")
         elif user_input == 3:
             exit()
         else:
